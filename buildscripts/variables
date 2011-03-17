@@ -10,6 +10,9 @@ fi
 SUFFIX=""
 test -z "$GCC"  || CSUFFIX="-$GCC"
 
+CPP="gcc$CSUFFIX -E"
+test -z "$SDK"  || CPP="$CPP -isysroot $SDK"
+
 CC="gcc$CSUFFIX"
 CXX="g++$CSUFFIX"
 
@@ -21,6 +24,7 @@ test -z "$MDT"  || OPTFLAGS="$OPTFLAGS -mmacosx-version-min=$MDT"
 CFLAGS="$OPTFLAGS"
 CXXFLAGS="$OPTFLAGS"
 
+export CPP
 export CC
 export CXX
 export CFLAGS
@@ -56,16 +60,34 @@ PATH="$PREFIX/bin:$PATH"
 PYTHONPATH="$PREFIX/lib/python$PYVER/site-packages:$PYTHONPATH"
 
 PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-/usr/lib/pkgconfig:/usr/local/lib/pkgconfig}
-PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$PKG_CONFIG_PATH"
+
+CUPS_CONFIG="$SDK/usr/bin/cups-config"
+CURL_CONFIG="$SDK/usr/bin/curl-config"
+
+test -z "$ARCH" || LDFLAGS="$LDFLAGS -arch $ARCH"
+test -z "$MDT"  || LDFLAGS="$LDFLAGS -mmacosx-version-min=$MDT"
 
 CPPFLAGS="$CPPFLAGS -I$PREFIX/include"
 LDFLAGS="$LDFLAGS -L$PREFIX/lib"
 
+if [ ! -z "$MDT" -a "$MDT" != "10.6" ]; then
+# avoid "unknown required load command: 0x80000022" from linking on Snow Leopard
+uname -r | grep ^10 >/dev/null && LDFLAGS="$LDFLAGS -Wl,-no_compact_linkedit"
+fi
+
 export PATH
 export PYTHONPATH
 export PKG_CONFIG_PATH
+export CUPS_CONFIG
+export CURL_CONFIG
 export CPPFLAGS
 export LDFLAGS
 
 CONFIGURE="./configure --target=$TARGET --prefix=$PREFIX --disable-static"
 
+COPY_EXTENDED_ATTRIBUTES_DISABLE=true
+COPYFILE_DISABLE=true
+
+export COPY_EXTENDED_ATTRIBUTES_DISABLE
+export COPYFILE_DISABLE
